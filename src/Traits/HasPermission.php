@@ -3,14 +3,18 @@
 namespace Rez1pro\UserAccess\Traits;
 
 use App\Models\Permission;
+use App\Models\Role;
 use BackedEnum;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
 trait HasPermission
 {
     public function permissions(): BelongsToMany
     {
-        return $this->belongsToMany(Permission::class, 'role_has_permissions');
+        return $this->belongsToMany(Permission::class, 'role_has_permissions', 'role_id', 'permission_id');
     }
+
     function givePermissionTo(BackedEnum|string|int $value)
     {
         if (is_int($value)) {
@@ -56,5 +60,10 @@ trait HasPermission
         $this->permissions()->detach($permission);
 
         return $this;
+    }
+
+    function role(): BelongsTo
+    {
+        return $this->belongsTo(Role::class, 'role_id');
     }
 }

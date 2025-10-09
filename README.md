@@ -1,7 +1,5 @@
 # 📦 Laravel UserAccess
 
-
-
 A Laravel package to manage **Roles & Permissions** using Models, Enums, and Facade support.  
 Easily integrate role-based access control into your application.
 
@@ -14,7 +12,6 @@ Easily integrate role-based access control into your application.
 ```bash
 composer require rez1pro/user-access
 ```
----
 
 ### 2. Service Provider
 
@@ -33,11 +30,10 @@ For a one-shot setup:
 
 ```bash
 php artisan user-access:install --force
-php artisan migrate // to migrate related tables
+php artisan migrate
 ```
 
 This will:
-
 - Publish **config**
 - Publish **migrations**
 - Publish **models**
@@ -65,25 +61,91 @@ This will:
 ## 🗄️ Database Schema
 
 The migration will create the following tables:
-
 - `roles`  
 - `permissions`  
 - `role_has_permissions` (pivot)  
 
 ---
 
+## 👤 User Model Integration
+
+Add the `HasPermission` trait to your User model:
+
+```php
+use Rez1pro\UserAccess\Traits\HasPermission;
+
+class User extends Authenticatable
+{
+    use HasPermission;
+    
+    // ...existing code...
+}
+```
+
+### User Permission Methods
+
+```php
+$user = User::find(1);
+
+// Assign role to user
+$user->assignRole('admin');
+$user->assignRole(['admin', 'editor']);
+
+// Check if user has role
+$user->hasRole('admin'); // true/false
+$user->hasAnyRole(['admin', 'editor']); // true/false
+
+// Check if user has permission
+$user->hasPermissionTo('create:user'); // true/false
+$user->hasPermissionTo(ExamplePermissionEnum::CREATE_USER); // true/false
+
+// Get user roles and permissions
+$user->roles; // Collection of roles
+$user->permissions; // Collection of permissions through roles
+
+// Remove role from user
+$user->removeRole('admin');
+```
+
+---
+
 ## 🧩 Models
 
 The package ships with:
-
 - `App\Models\Role`
 - `App\Models\Permission`
 
-Example:
+### Role Model Usage
 
 ```php
+use App\Models\Role;
+
+// Create role
 $role = Role::create(['name' => 'Admin']);
-$role->permissions()->attach(ExamplePermissionEnums::CREATE_USER);
+
+// Assign permissions to role
+$role->givePermissionTo(ExamplePermissionEnum::CREATE_USER);
+$role->givePermissionTo(['create:user', 'edit:user']);
+
+// Check role permissions
+$role->hasPermissionTo(ExamplePermissionEnum::CREATE_USER); // true/false
+
+// Get role permissions
+$role->permissions; // Collection of permissions
+
+// Remove permission from role
+$role->removePermission(ExamplePermissionEnum::CREATE_USER);
+```
+
+### Permission Model Usage
+
+```php
+use App\Models\Permission;
+
+$permission = Permission::where('name', 'create:user')->first();
+
+// Get all roles that have this permission
+$permission->roles; // Collection of roles
 ```
 
 ---
@@ -95,7 +157,7 @@ Enums are placed in `App\Enums\Permissions`.
 Example:
 
 ```php
-use Rez1pro\UserAccess\HasAccess;
+use Rez1pro\UserAccess\Traits\HasAccess;
 
 enum ExamplePermissionEnum: string
 {
@@ -103,6 +165,8 @@ enum ExamplePermissionEnum: string
 
     case VIEW_EXAMPLE = 'view:example';
     case CREATE_EXAMPLE = 'create:example';
+    case EDIT_EXAMPLE = 'edit:example';
+    case DELETE_EXAMPLE = 'delete:example';
 }
 ```
 
@@ -112,18 +176,20 @@ Usage:
 ExamplePermissionEnum::VIEW_EXAMPLE->value; // "view:example"
 ```
 
-Commands:
+### Permission Commands
 
-```php
-php artisan permission:create // to create new permission enums
-php artisan permission:insert // to insert all the permissions to the database
+```bash
+# Create new permission enums
+php artisan permission:create
+
+# Insert all permissions to database
+php artisan permission:insert
+
+# Remove permissions from database
+php artisan permission:rollback
 ```
 
-Rollback Commands:
-```php
-php artisan permission:rollback // select and remove permissions from database
-```
-After Run that command you will like this:
+After running rollback command:
 ```php
 namespace App\Enums\Permissions;
 
@@ -133,7 +199,6 @@ enum ExamplePermissionEnum: string
 {
     use HasAccess;
 
-    // Example permission cases
     // case VIEW_EXAMPLE = 'view:example'; // commented by UserAccess package
     case CREATE_EXAMPLE = 'create:example';
 }
@@ -148,12 +213,15 @@ The `UserAccess` Facade provides quick helpers:
 ```php
 use Rez1pro\UserAccess\Facades\UserAccess;
 
-// Get all permission in array
-$permissions = UserAccess::all(); // ['user:create','user:view']
+// Get all permissions as array
+$permissions = UserAccess::all(); 
+// Returns: ['view:example', 'create:example']
 
-// Get permissions for user ID
-$permissionWithGroups = UserAccess::withGroup(); // Returns:
+// Get permissions grouped by enum
+$permissionWithGroups = UserAccess::withGroup();
+```
 
+Returns JSON structure:
 ```json
 [
     {
@@ -170,23 +238,61 @@ $permissionWithGroups = UserAccess::withGroup(); // Returns:
         ]
     }
 ]
+```
 
-   //  $hasPermission = UserAccess::has(ExamplePermissionEnum::CREATE_USER); // true or false
+---
 
-    // $role = Role::create(['name' => 'admin']);  // create new role
+## 🔐 Practical Usage Examples
 
-    $role = Role::first();
-    // return $role->givePermissionTo(ExamplePermissionEnum::VIEW_EXAMPLE); // attach permission to role
+### Complete User Role & Permission Setup
 
-    // return $role->permissions; // Role based permission
+```php
+use App\Models\User;
+use App\Models\Role;
+use App\Enums\Permissions\ExamplePermissionEnum;
 
-    // return dd($role->hasPermissionTo(ExamplePermissionEnum::VIEW_EXAMPLE)); // param can be enum, string or id eg (1, 'view_example', ExamplePermissionEnum::VIEW_EXAMPLE)
+// Create a role
+$adminRole = Role::create(['name' => 'admin']);
 
-    // return $role->removePermission(ExamplePermissionEnum::VIEW_EXAMPLE); // detach permission from role
+// Assign permissions to role
+$adminRole->givePermissionTo([
+    ExamplePermissionEnum::VIEW_EXAMPLE,
+    ExamplePermissionEnum::CREATE_EXAMPLE,
+    ExamplePermissionEnum::EDIT_EXAMPLE
+]);
 
-    // $permission = Permission::first();
+// Assign role to user
+$user = User::find(1);
+$user->assignRole('admin');
 
-    // return $permission->roles; // get all roles associated with this permission
+// Check user permissions
+if ($user->hasPermissionTo(ExamplePermissionEnum::CREATE_EXAMPLE)) {
+    // User can create examples
+}
+
+// In your controllers/middleware
+if (auth()->user()->hasPermissionTo('edit:example')) {
+    // Allow edit action
+}
+```
+
+### Middleware Usage
+
+```php
+// In your routes
+Route::middleware(['auth', 'permission:create:user'])->group(function () {
+    Route::post('/users', [UserController::class, 'store']);
+});
+
+// Or check in controller
+public function store(Request $request)
+{
+    if (!auth()->user()->hasPermissionTo('create:user')) {
+        abort(403, 'Unauthorized');
+    }
+    
+    // Create user logic
+}
 ```
 
 ---
@@ -195,9 +301,10 @@ $permissionWithGroups = UserAccess::withGroup(); // Returns:
 
 - `php artisan user-access:install` → Quick setup  
 - `UserAccess` Facade → Easy access to roles & permissions  
+- `HasPermission` Trait → Add to User model for permission checking
 - `Enums` → Strongly typed permissions  
-- `Models` → Extendable  
-- `Migrations` → Already published feel free to change  
+- `Models` → Extendable Role and Permission models
+- `Migrations` → Published and customizable
 
 ---
 
