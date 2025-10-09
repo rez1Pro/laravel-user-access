@@ -1,6 +1,6 @@
 {
     "name": "rez1pro/user-access",
-    "version": "1.1.4",
+    "version": "1.2",
     "description": "Laravel UserAccess package for roles & permissions using models, enums, and facades.",
     "tags": [
         "laravel",
