@@ -15,6 +15,7 @@ class UserAccessServiceProvider extends ServiceProvider
                 \Rez1pro\UserAccess\Console\Commands\PermissionCreateCommand::class,
                 \Rez1pro\UserAccess\Console\Commands\PermissionInsertCommand::class,
                 \Rez1pro\UserAccess\Console\Commands\PermissionRollbackCommand::class,
+                \Rez1pro\UserAccess\Console\Commands\PermissionFreshCommand::class,
             ]);
 
             $this->publishes([
