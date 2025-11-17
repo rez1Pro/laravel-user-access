@@ -187,6 +187,9 @@ php artisan permission:insert
 
 # Remove permissions from database
 php artisan permission:rollback
+
+# Delete all existing permissions and re-insert them (fresh start)
+php artisan permission:fresh
 ```
 
 After running rollback command:
@@ -203,6 +206,11 @@ enum ExamplePermissionEnum: string
     case CREATE_EXAMPLE = 'create:example';
 }
 ```
+The `permission:fresh` command is useful when you want to:
+- Reset all permissions to match your current enum definitions
+- Clean up old/unused permissions from the database
+- Sync permissions after major enum changes
+- **Note:** This will temporarily disable foreign key checks to allow deletion, then re-insert all permissions from your enums
 
 ---
 
